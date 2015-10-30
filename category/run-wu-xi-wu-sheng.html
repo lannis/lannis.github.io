@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8" />
+    <!-- Set the viewport width to device width for mobile -->
+    <meta name="viewport" content="width=device-width" />
+
+    <title>Lovelife - 润物细无声</title>
+
+    <link rel="stylesheet" href="http://lannis.github.io/theme/css/normalize.css" />
+    <link rel="stylesheet" href="http://lannis.github.io/theme/css/foundation.min.css" />
+    <link rel="stylesheet" href="http://lannis.github.io/theme/css/style.css" />
+    <link rel="stylesheet" href="http://lannis.github.io/theme/css/pygments.css" />	
+    <script src="http://lannis.github.io/theme/js/modernizr.js"></script>
+</head>
+
+<body>
+
+<!-- Nav Bar -->
+<nav>
+<div class="top-bar">
+<div class="row">
+    <div class="large-9 large-centered columns">
+	    <h1><a href="http://lannis.github.io">Lovelife</a></h1>
+    </div>
+</div>
+</div>
+
+<!-- Show menu items and pages -->
+<div class="row">
+<div class="large-9 columns">
+    <ul class="button-group navigation">
+
+    </ul>
+</div>
+</div>
+</nav>
+<!-- End Nav -->
+
+
+<!-- Main Page Content and Sidebar -->
+<div class="row">
+
+    <!-- Main Blog Content -->
+    <div class="large-9 columns">
+        
+        
+
+            <article>
+                <a href="http://lannis.github.io/articles/rewind/"><h3 class="article-title">rewind in PostgreSQL</h3></a>
+<h6 class="subheader" title="2015-10-30T21:30:00+08:00">2015-10-30
+</h6>
+
+
+<p><strong><em>一个月</em></strong>没有写文章了，这一个月确实比较忙。十一西安到北京，转至青岛，回家，返回西安。回来后又要驾照考试。  </p>
+<p>回到正文上次写到本文准备介绍一下时间线的问题，基于当前的形式，暂且放一下，今天我来介绍PostgreSQL中一个工具rewind。rewind是一个增量备份工具，最早由vmware开发，后来推送到社区后被接纳，我们得以学习到，其实在去年，基于工作性质，我们就做过类似rewind的demo，只是限于时间没有好好细化，搁置了半年之久，后来发现rewind社区已经做了，我花了半天的时间读了一下相关的代码，结构和思想还是比较清晰的。  </p>
+<p>PostgreSQL中传统的全量备份是基于文件系统的拷贝，为了保证在线备份及恢复的一致性，PostgreSQL增加了备份模式，这里不在详细介绍。后来有一个类似的外部工具出现了--rman，日本写的。rman支持全量和增量，全量为文件拷贝，增量是基于全量的基础上，通过当前全量备份的LSN与当前数据页面的LSN作比较，在数据量大时效率仍然不是很好。  </p>
+<p>与rman不同的是rewind采用了一种全新的视角来修复primary/standby关系，rewind通过解析备机上的WAL日志文件逆向获取那些需要还原的数据信息从主机上讲需要还原的信息重新同步到备机。原因是通过日志我们可以获知在备机上发生了什么，参见前文。有两个前提：  备机上从某一时刻和主机分道扬镳，这一个时刻的日志我们可以获取到，并且后续的日志都存在；fullpagewrite。第一个前提比较好理解，第二个前提具体在下文介绍。  </p>
+<p>rewind工具没有采用传统的备机视角，而是采用的普通的客户端视角，通过一系列SQL查询获取其需要的信息。主要过程有以下几部分：<br />
+1.必要的参数检查。<br />
+2.连接主机，对比主备机上control文件，确定两者同源及一些条件的检查。<br />
+3.根据时间线历史文件获取主备分开的日志LSN。<br />
+4.检查当前的备机是否可以不需要做rewind。<br />
+5.前向扫描日志，找到主备一致点前的checkpoint，以这个checkpoint为基准向后解析日志。<br />
+6.初始化filemap结构，后续用来存储需要同步的文件及页面信息。<br />
+7.通过SQL查询的方式获取主机上所有的文件信息，并于本地文件比较，有几种情况，主机上有备机上没有(COPY)，主机比备机大(COPYTAIL)，备机比主机大(TRUNCATE)等等。<br />
+8.读取备机上的文件，检查哪些文件不在主机的文件列表中，需要插入到filemap中标记为要删除(REMOVE)。<br />
+9.从前面找的checkpoint开始解析日志，获取日志中的bkpb中的rel block信息，讲此信息以bit map的方式插入到filemap结构中。<br />
+10.对最终生成的filemap做排序。<br />
+11.遍历filemap，分类处理每一种类型，对于需要向主机同步的，采用SQL的方式，创建临时表，将所有需要向主机同步的文件/块信息以记录的方式放到表中。执行特定的语句，主机遍历临时表中的记录，读取相应的文件/块，发送到备机。<br />
+12.创建backuplabel文件以及调整control文件。<br />
+13.手动以备机方式拉起。  </p>
+<p>整体而言rewind的思想很不错，数据量大时不需要去遍历所有的数据文件，但是限制也颇多，比如，需要完全保留日志，对主备机的停止模式有严格的要求，必须打开fullpagewrite，等等。尽管如此，仍然不失为一个高效率的主备修复工具。当然在很多方面可以做优化，使得工具的适用范围更加广。</p><p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
+
+    Tagged: 
+    <a href="http://lannis.github.io/tag/rewind.html">rewind </a>
+    <a href="http://lannis.github.io/tag/rman.html">rman </a>
+    <a href="http://lannis.github.io/tag/postgresql.html">PostgreSQL </a>
+</p>
+
+
+
+<p><a href="http://lannis.github.io/articles/rewind/#disqus_thread">comments</a></p>            </article>
+
+
+                <hr  class="gradient"/>
+
+
+        
+
+
+            <article>
+                <a href="http://lannis.github.io/articles/learning/"><h3 class="article-title">timeline in PostgreSQL</h3></a>
+<h6 class="subheader" title="2015-09-17T22:20:00+08:00">2015-09-17
+</h6>
+
+
+<p>PostgreSQL数据库中时间线的介绍</p><p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
+
+    Tagged: 
+    <a href="http://lannis.github.io/tag/timeline.html">timeline </a>
+    <a href="http://lannis.github.io/tag/postgresql.html">PostgreSQL </a>
+</p>
+
+
+
+<p><a href="http://lannis.github.io/articles/learning/#disqus_thread">comments</a></p>                <a class="button radius secondary small right" href="http://lannis.github.io/articles/learning/">Read More</a>
+                <hr  class="gradient"/>
+            </article>
+
+            <!-- /#posts-list -->
+<div class="pagination-centered">
+<h6 class="subheader">Page 1 of 1</h6>
+
+<p>
+
+</p>
+</div>
+
+    </div>
+    <!-- End Main Content -->
+
+    <!-- Sidebar -->
+    <aside class="large-3 columns">
+        <h5 class="sidebar-title">Site</h5>
+        <ul class="side-nav">
+            <li><a href="http://lannis.github.io/archives.html">Archives</a>
+            <li><a href="http://lannis.github.io/tags.html">Tags</a>
+        </ul>
+
+		
+        <h5 class="sidebar-title">Categories</h5>
+        <ul class="side-nav">
+            <li><a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a></li>
+            <li><a href="http://lannis.github.io/category/sui-feng-qian-ru-ye.html">随风潜入夜</a></li>
+            <li><a href="http://lannis.github.io/category/uncategorized.html">Uncategorized</a></li>
+   
+        </ul>
+
+        <h5 class="sidebar-title">Links</h5>
+        <ul class="side-nav">
+            <li><a href="http://getpelican.com/">Pelican</a></li>
+            <li><a href="http://rogerarm.github.io/">rogerarm</a></li>
+            <li><a href="#">You can modify those links in your config file</a></li>
+        </ul>
+		
+        <h5 class="sidebar-title">Social</h5>
+        <ul class="side-nav">
+            <li><a href="http://github.com/lannis/">Github</a></li>
+            <li><a href="#">You can add links in your config file</a></li>
+            <li><a href="#">Another social link</a></li>
+        </ul>
+
+    </aside> <!-- End Sidebar -->
+
+</div> <!-- End Main Content and Sidebar -->
+
+
+<!-- Footer -->
+<footer class="row">
+    <div class="large-12 columns">
+        <hr />
+        <div class="row">
+            <div class="large-6 columns">
+              <!--                  <p>Lovelife by lannis</p> -->
+            </div>
+            </div>
+    </div>
+</footer>
+</body>
+</html>

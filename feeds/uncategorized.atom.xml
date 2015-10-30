@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Lovelife</title><link href="http://lannis.github.io/" rel="alternate"></link><link href="http://lannis.github.io/feeds/uncategorized.atom.xml" rel="self"></link><id>http://lannis.github.io/</id><updated>2015-09-01T07:49:00+08:00</updated><entry><title>About Me</title><link href="http://lannis.github.io/articles/About%20Me/" rel="alternate"></link><updated>2015-09-01T07:49:00+08:00</updated><author><name>Lannis</name></author><id>tag:lannis.github.io,2015-09-01:articles/About Me/</id><summary type="html">&lt;p&gt;Hello Pelican, Markdown and Github Blogs.&lt;/p&gt;
+&lt;h4&gt;感想&lt;/h4&gt;
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;今天&lt;/em&gt;&lt;/strong&gt;是第一次成功配置github blog，很开心，因为刚开始不是特别的顺利。&lt;br /&gt;
+甚至安装Ubuntu Kylin后一段时间Windows 10都启动不起来了。万幸通过boot repair修复了。&lt;br /&gt;
+后续相关的学习及心得会在此blog上更新，欢迎访问和评论，哈哈哈&lt;/p&gt;
+&lt;h4&gt;链接&lt;/h4&gt;
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;下面&lt;/em&gt;&lt;/strong&gt;是配置的几个学习的链接，以供收藏和学习:&lt;br /&gt;
+&lt;a href="http://www.jianshu.com/p/1e402922ee32/"&gt;Markdown--入门指南&lt;/a&gt;&lt;br /&gt;
+&lt;a href="http://www.linuxzen.com/shi-yong-pelicanda-zao-jing-tai-bo-ke.html"&gt;使用Pelican打造静态博客&lt;/a&gt;&lt;br /&gt;
+&lt;a href="http://heylinux.com/archives/3337.html?utm_source=tuicool"&gt;使用Pelican + Markdown + GitHub Pages来撰写Blog&lt;/a&gt;&lt;/p&gt;</summary><category term="Pelican"></category><category term="Markdown"></category></entry></feed>

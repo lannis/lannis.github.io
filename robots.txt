@@ -1,0 +1,2 @@
+User-agent: *
+Sitemap: http://lannis.github.io/sitemap.xml

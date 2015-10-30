@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Lovelife</title><link href="http://lannis.github.io/" rel="alternate"></link><link href="http://lannis.github.io/feeds/run-wu-xi-wu-sheng.atom.xml" rel="self"></link><id>http://lannis.github.io/</id><updated>2015-10-30T21:30:00+08:00</updated><entry><title>rewind in PostgreSQL</title><link href="http://lannis.github.io/articles/rewind/" rel="alternate"></link><updated>2015-10-30T21:30:00+08:00</updated><author><name>Lannis</name></author><id>tag:lannis.github.io,2015-10-30:articles/rewind/</id><summary type="html">&lt;p&gt;&lt;strong&gt;&lt;em&gt;一个月&lt;/em&gt;&lt;/strong&gt;没有写文章了，这一个月确实比较忙。十一西安到北京，转至青岛，回家，返回西安。回来后又要驾照考试。  &lt;/p&gt;
+&lt;p&gt;回到正文上次写到本文准备介绍一下时间线的问题，基于当前的形式，暂且放一下，今天我来介绍PostgreSQL中一个工具rewind。rewind是一个增量备份工具，最早由vmware开发，后来推送到社区后被接纳，我们得以学习到，其实在去年，基于工作性质，我们就做过类似rewind的demo，只是限于时间没有好好细化，搁置了半年之久，后来发现rewind社区已经做了，我花了半天的时间读了一下相关的代码，结构和思想还是比较清晰的。  &lt;/p&gt;
+&lt;p&gt;PostgreSQL中传统的全量备份是基于文件系统的拷贝，为了保证在线备份及恢复的一致性，PostgreSQL增加了备份模式，这里不在详细介绍。后来有一个类似的外部工具出现了--rman，日本写的。rman支持全量和增量，全量为文件拷贝，增量是基于全量的基础上，通过当前全量备份的LSN与当前数据页面的LSN作比较，在数据量大时效率仍然不是很好。  &lt;/p&gt;
+&lt;p&gt;与rman不同的是rewind采用了一种全新的视角来修复primary/standby关系，rewind通过解析备机上的WAL日志文件逆向获取那些需要还原的数据信息从主机上讲需要还原的信息重新同步到备机。原因是通过日志我们可以获知在备机上发生了什么，参见前文。有两个前提：  备机上从某一时刻和主机分道扬镳，这一个时刻的日志我们可以获取到，并且后续的日志都存在；fullpagewrite。第一个前提比较好理解，第二个前提具体在下文介绍。  &lt;/p&gt;
+&lt;p&gt;rewind工具没有采用传统的备机视角，而是采用的普通的客户端视角，通过一系列SQL查询获取其需要的信息。主要过程有以下几部分：&lt;br /&gt;
+1.必要的参数检查。&lt;br /&gt;
+2.连接主机，对比主备机上control文件，确定两者同源及一些条件的检查。&lt;br /&gt;
+3.根据时间线历史文件获取主备分开的日志LSN。&lt;br /&gt;
+4.检查当前的备机是否可以不需要做rewind。&lt;br /&gt;
+5.前向扫描日志，找到主备一致点前的checkpoint，以这个checkpoint为基准向后解析日志。&lt;br /&gt;
+6.初始化filemap结构，后续用来存储需要同步的文件及页面信息。&lt;br /&gt;
+7.通过SQL查询的方式获取主机上所有的文件信息，并于本地文件比较，有几种情况，主机上有备机上没有(COPY)，主机比备机大(COPYTAIL)，备机比主机大(TRUNCATE)等等。&lt;br /&gt;
+8.读取备机上的文件，检查哪些文件不在主机的文件列表中，需要插入到filemap中标记为要删除(REMOVE)。&lt;br /&gt;
+9.从前面找的checkpoint开始解析日志，获取日志中的bkpb中的rel block信息，讲此信息以bit map的方式插入到filemap结构中。&lt;br /&gt;
+10.对最终生成的filemap做排序。&lt;br /&gt;
+11.遍历filemap，分类处理每一种类型，对于需要向主机同步的，采用SQL的方式，创建临时表，将所有需要向主机同步的文件/块信息以记录的方式放到表中。执行特定的语句，主机遍历临时表中的记录，读取相应的文件/块，发送到备机。&lt;br /&gt;
+12.创建backuplabel文件以及调整control文件。&lt;br /&gt;
+13.手动以备机方式拉起。  &lt;/p&gt;
+&lt;p&gt;整体而言rewind的思想很不错，数据量大时不需要去遍历所有的数据文件，但是限制也颇多，比如，需要完全保留日志，对主备机的停止模式有严格的要求，必须打开fullpagewrite，等等。尽管如此，仍然不失为一个高效率的主备修复工具。当然在很多方面可以做优化，使得工具的适用范围更加广。&lt;/p&gt;</summary><category term="rewind"></category><category term="rman"></category><category term="PostgreSQL"></category></entry><entry><title>timeline in PostgreSQL</title><link href="http://lannis.github.io/articles/learning/" rel="alternate"></link><updated>2015-09-17T22:20:00+08:00</updated><author><name>Lannis</name></author><id>tag:lannis.github.io,2015-09-17:articles/learning/</id><summary type="html">&lt;p&gt;&lt;strong&gt;&lt;em&gt;PostgreSQL&lt;/em&gt;&lt;/strong&gt;数据库是一个开源的传统关系性数据库，目前在国内的应用是越来越广泛的。为什么？有些觉得这个数据库功能比较强大，社区比较活跃，然后使用PostgreSQL为基线可以开发针对自己需求场景的数据库，而不必去承担一些责任。  &lt;/p&gt;
+&lt;p&gt;但是在我看来，这些都是一些外在的，真正好的还是数据库本身。从2013年起，每次的commit记录我都会看一下学习一下，当然啦，很多patch是看不懂，个人水平有限... PostgreSQL社区的committer真的是一群大牛们，他们对于技术的热爱以及对于CODE本身的严谨程度让我感到震撼，Tom Lane(社区的大哥大，从199×年开始就在运营社区)对每一次提交都有很详细的记录以及很清晰的comments，甚至因为几个white blank或者因为几个注释的单词拼写错误就会去提交一次，让人从内心深处敬佩。所以学习他们的code，就像在欣赏一件艺术品。有他们这些人，PostgreSQL的前景是美好的。  &lt;/p&gt;
+&lt;p&gt;因工作需要从2012年下半年就开始接触PostgreSQL相关的事情，印象比较深刻的是关于时间线(timeline)的概念，当时真的是完全不理解，也许吧看过科幻电影、小说。这个是一个很有意思的话题，一个人回到过去杀掉了自己的祖母，然后这个人会发生什么悖论。  &lt;/p&gt;
+&lt;p&gt;在数据库中时间线是一个看得见摸得着的东西，因为基于可靠性，数据库会记录日志，一般的日志都是时间+内容的方式，就像日记一样，某一天发生了什么事情。这样一天一天的累积，我们可能写了好多本日记，有这个月的，有去年的，有前年的...   &lt;/p&gt;
+&lt;p&gt;举个例子，现在拿起手中的日记本，比如2012年的日记，翻开某一页，其中日记上这么写着，今天想去北京玩，结果因为某些事情没有去成，导致现在没有认识某些人或者没有做某些事。然后我可能会想如果当时下定决心会怎么样... 也会有一个不一样的人生吧。扯远了，数据库中时间线的存在就像一连串起来的日记，我可以选择一天回到过去，做出另外一种选择，描绘另外一种人生。比如之前的时间线是1，那么回到过去做出一些不一样选择后的时间线叫2，以此类推。  &lt;/p&gt;
+&lt;p&gt;在PostgreSQL中日志是以WAL记录的方式存储，每一个WAL日志段文件像是一个日记本，我们写完一个，会买另外一个继续写。同样的道理，日志段文件中记录的record就是我们那一天一天的日记。数据库的恢复机制，允许我们从一个过去的时间点开始恢复，恢复到一定时间后后面的日志可以选择性不恢复，从而以全新的状态运行。  &lt;/p&gt;
+&lt;p&gt;今天就到这里了，下次主要想总结的是PostgreSQL中replication跨时间线传输在当前版本中的限制。  &lt;/p&gt;
+&lt;p&gt;马上中秋节了，中秋节要去北京一趟，去见一些想见的人，然后在北京上三天班，接着去青岛，然后回家。祝中秋快乐。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;MISS U&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;</summary><category term="timeline"></category><category term="PostgreSQL"></category></entry></feed>

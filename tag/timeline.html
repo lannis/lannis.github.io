@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8" />
+    <!-- Set the viewport width to device width for mobile -->
+    <meta name="viewport" content="width=device-width" />
+
+    <title>Lovelife - timeline</title>
+
+    <link rel="stylesheet" href="http://lannis.github.io/theme/css/normalize.css" />
+    <link rel="stylesheet" href="http://lannis.github.io/theme/css/foundation.min.css" />
+    <link rel="stylesheet" href="http://lannis.github.io/theme/css/style.css" />
+    <link rel="stylesheet" href="http://lannis.github.io/theme/css/pygments.css" />	
+    <script src="http://lannis.github.io/theme/js/modernizr.js"></script>
+</head>
+
+<body>
+
+<!-- Nav Bar -->
+<nav>
+<div class="top-bar">
+<div class="row">
+    <div class="large-9 large-centered columns">
+	    <h1><a href="http://lannis.github.io">Lovelife</a></h1>
+    </div>
+</div>
+</div>
+
+<!-- Show menu items and pages -->
+<div class="row">
+<div class="large-9 columns">
+    <ul class="button-group navigation">
+
+    </ul>
+</div>
+</div>
+</nav>
+<!-- End Nav -->
+
+
+<!-- Main Page Content and Sidebar -->
+<div class="row">
+
+    <!-- Main Blog Content -->
+    <div class="large-9 columns">
+        
+        
+
+            <article>
+                <a href="http://lannis.github.io/articles/learning/"><h3 class="article-title">timeline in PostgreSQL</h3></a>
+<h6 class="subheader" title="2015-09-17T22:20:00+08:00">2015-09-17
+</h6>
+
+
+<p><strong><em>PostgreSQL</em></strong>数据库是一个开源的传统关系性数据库，目前在国内的应用是越来越广泛的。为什么？有些觉得这个数据库功能比较强大，社区比较活跃，然后使用PostgreSQL为基线可以开发针对自己需求场景的数据库，而不必去承担一些责任。  </p>
+<p>但是在我看来，这些都是一些外在的，真正好的还是数据库本身。从2013年起，每次的commit记录我都会看一下学习一下，当然啦，很多patch是看不懂，个人水平有限... PostgreSQL社区的committer真的是一群大牛们，他们对于技术的热爱以及对于CODE本身的严谨程度让我感到震撼，Tom Lane(社区的大哥大，从199×年开始就在运营社区)对每一次提交都有很详细的记录以及很清晰的comments，甚至因为几个white blank或者因为几个注释的单词拼写错误就会去提交一次，让人从内心深处敬佩。所以学习他们的code，就像在欣赏一件艺术品。有他们这些人，PostgreSQL的前景是美好的。  </p>
+<p>因工作需要从2012年下半年就开始接触PostgreSQL相关的事情，印象比较深刻的是关于时间线(timeline)的概念，当时真的是完全不理解，也许吧看过科幻电影、小说。这个是一个很有意思的话题，一个人回到过去杀掉了自己的祖母，然后这个人会发生什么悖论。  </p>
+<p>在数据库中时间线是一个看得见摸得着的东西，因为基于可靠性，数据库会记录日志，一般的日志都是时间+内容的方式，就像日记一样，某一天发生了什么事情。这样一天一天的累积，我们可能写了好多本日记，有这个月的，有去年的，有前年的...   </p>
+<p>举个例子，现在拿起手中的日记本，比如2012年的日记，翻开某一页，其中日记上这么写着，今天想去北京玩，结果因为某些事情没有去成，导致现在没有认识某些人或者没有做某些事。然后我可能会想如果当时下定决心会怎么样... 也会有一个不一样的人生吧。扯远了，数据库中时间线的存在就像一连串起来的日记，我可以选择一天回到过去，做出另外一种选择，描绘另外一种人生。比如之前的时间线是1，那么回到过去做出一些不一样选择后的时间线叫2，以此类推。  </p>
+<p>在PostgreSQL中日志是以WAL记录的方式存储，每一个WAL日志段文件像是一个日记本，我们写完一个，会买另外一个继续写。同样的道理，日志段文件中记录的record就是我们那一天一天的日记。数据库的恢复机制，允许我们从一个过去的时间点开始恢复，恢复到一定时间后后面的日志可以选择性不恢复，从而以全新的状态运行。  </p>
+<p>今天就到这里了，下次主要想总结的是PostgreSQL中replication跨时间线传输在当前版本中的限制。  </p>
+<p>马上中秋节了，中秋节要去北京一趟，去见一些想见的人，然后在北京上三天班，接着去青岛，然后回家。祝中秋快乐。</p>
+<p><strong><em>MISS U</em></strong></p><p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
+
+    Tagged: 
+    <a href="http://lannis.github.io/tag/timeline.html">timeline </a>
+    <a href="http://lannis.github.io/tag/postgresql.html">PostgreSQL </a>
+</p>
+
+
+
+<p><a href="http://lannis.github.io/articles/learning/#disqus_thread">comments</a></p>            </article>
+
+<div class="pagination-centered">
+<h6 class="subheader">Page 1 of 1</h6>
+
+<p>
+
+</p>
+</div>
+
+
+
+            <!-- /#posts-list -->
+
+    </div>
+    <!-- End Main Content -->
+
+    <!-- Sidebar -->
+    <aside class="large-3 columns">
+        <h5 class="sidebar-title">Site</h5>
+        <ul class="side-nav">
+            <li><a href="http://lannis.github.io/archives.html">Archives</a>
+            <li><a href="http://lannis.github.io/tags.html">Tags</a>
+        </ul>
+
+		
+        <h5 class="sidebar-title">Categories</h5>
+        <ul class="side-nav">
+            <li><a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a></li>
+            <li><a href="http://lannis.github.io/category/sui-feng-qian-ru-ye.html">随风潜入夜</a></li>
+            <li><a href="http://lannis.github.io/category/uncategorized.html">Uncategorized</a></li>
+   
+        </ul>
+
+        <h5 class="sidebar-title">Links</h5>
+        <ul class="side-nav">
+            <li><a href="http://getpelican.com/">Pelican</a></li>
+            <li><a href="http://rogerarm.github.io/">rogerarm</a></li>
+            <li><a href="#">You can modify those links in your config file</a></li>
+        </ul>
+		
+        <h5 class="sidebar-title">Social</h5>
+        <ul class="side-nav">
+            <li><a href="http://github.com/lannis/">Github</a></li>
+            <li><a href="#">You can add links in your config file</a></li>
+            <li><a href="#">Another social link</a></li>
+        </ul>
+
+    </aside> <!-- End Sidebar -->
+
+</div> <!-- End Main Content and Sidebar -->
+
+
+<!-- Footer -->
+<footer class="row">
+    <div class="large-12 columns">
+        <hr />
+        <div class="row">
+            <div class="large-6 columns">
+              <!--                  <p>Lovelife by lannis</p> -->
+            </div>
+            </div>
+    </div>
+</footer>
+</body>
+</html>
