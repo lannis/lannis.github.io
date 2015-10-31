@@ -52,33 +52,37 @@
 </h6>
 
 
-    <p>前一段时间<a href="https://github.com/greenplum-db/gpdb">GreenPlum</a>数据库正式开源了，对于整个行业来说冲击比较大。李元佳(华为/PostgresSQL)写了两篇文章分享分析为什么GreenPlum要开源，以及其开源的影响。<br />
-我相信很多数据厂商在第一时间拿到了相关的已经开发的技术文档以及在github上托管的代码进行分析，作为一个数据库内核开发人员而言，可能不会直接面对其对市场的冲击带来的压力，但是学习并研究其相关的代码，能够接地气的深入了解到前沿的技术，对自己也是一个很大的提升。</p>
-<p><strong><em>GreenPlum</em></strong>相关的开源协议以及其各种高大上的介绍，这里就不重复再重复了，网上太多了。提一点, GreenPlum是基于PostgreSQL 8.2.13内版本做的开发，当然可能最初的版本不是这个，通过一系列开源特性回合回合到这个版本。通过copyrights可以看到，从06年到现在，GreenPlum已经做了10年了，时间可以证明一切，在此表示敬意。</p>
-<p>鉴于自己的工作性质，我可能从以下几个方面学习并分享其技术: 进程管理、高可用、备份、恢复以及存储管理等。随着自己学习的加深也可能会多少涉及到其他部分。</p>
-<p>相对PostgreSQL而言，GreenPlum的进程管理要复杂的多，我们知道在PostgreSQL中通过针对pmState采用状态机进行自我管理。通过阅读GreenPlum的代码我们会发现，其在更high level上增加了一个叫pmModuleState的结构用以管理HA的transition/replication等，复杂度要高的多。</p>
-<p>在GreenPlum中primary主要包含以下几个进程(ckp/bgw等暂不考虑):
-<em>1 postmaster process                       </em>和PostgreSQL功能基本类似，不再详述<em>
-</em>2 primary process                          <em>负责拉起所有primary相关的进程并负责相关的日志刷新(FileRep_Main)</em>
-<em>3 primary receiver ack process             </em>接受listensocket0上的连接，连接建立后处理mirror发送的的ack消息,将消息插入shmem(FileRepAckPrimary_RunReceiver)<em>
-</em>4 primary sender process                   <em>发起连接连mirror，监控fileRepShmemArray上的信息，重组业务消息发送给mirror(FileRepPrimary_RunSender)</em>
-<em>5 primary consumer ack process             </em>处理receiver ack收到的消息, 更新到fileRepAckHashShmem-&gt;hash哈希表中(FileRepAckPrimary_RunConsumer)<em>
-</em>6 primary recovery progress                <em>根绝各种消息类型，定期插入不同的hearbeat消息到哈希表，并检查最终从mirror返回更新到哈希表的状态(FileRepPrimary_RunHeartBeat)</em>
-<em>7 primary verification progress            </em>verify进程，根据请求进行verify(FileRepPrimary_StartVerification)<em>
-</em>8 sweeper progress                         <em>没有细看，字面意思类似于PostgreSQL中的vacuum,只不过监控的是每个backend的CPU状态(BackoffSweeper)</em></p>
-<p>mirror主要包含以下几个进程：
-<em>1 postmaster process                       </em>和PostgreSQL功能基本类似，不再详述<em>
-</em>2 mirror progress                          <em>负责拉起所有mirror相关的进程并负责相关的日志刷新(FileRep_Main)</em>
-<em>3 mirror receiver progress                 </em>接受listenSocket0上的连接，连接建立后处理primary发送的业务消息，通过内部的状态转换决定当前处理方式环节，如先获取消息类型，reserve消息空间，接受数据，通知消费者等(FileRepMirror_RunReceiver)<em>
-</em>4 mirror consumer progress                 <em>consumer，类型为FileRepMessageTypeXLog，处理消息中的具体文件操作信息，如打开、写数据、刷盘、关闭，truncate等(FileRepMirror_RunConsumer)</em>
-<em>5 mirror consumer writer progress          </em>consumer，类型为FileRepMessageTypeWriter，同上<em>
-</em>6 mirror consumer append only progress     <em>consumer，类型为FileRepMessageTypeAO01，同上</em>
-<em>8 mirror sender ack progress               </em>发起连接连primary，监控fileRepAckShmemArray上的信息, 发送ack消息给primary(FileRepAckMirror_RunReceiver)<em>
-</em>9 mirror verification progress             <em>consumer，类型为FileRepMessageTypeVerify，同上</em></p>
-<p>限于GreeenPlum代码的复杂程度，当前理解有限。先到这里了，后面会加入业务操作，从WAL/数据角度看HA以及进程在GreenPlum中是如何运作的， 如果你对PostgreSQL了解的话，此时应该可以有点眉目了，就是GreenPlum中的primary/mirror同步不单单是WAL。
-一般而言看这种复杂的数据库，可以从多个角度，我一般喜欢从常驻进程/线程分析，看看什么条件会收到请求，这些请求被如何处理了，这些请求的来源又是什么等等。
-补充一点，程序内部多进程采用的是ipc和shmem同步到消息，程序间走的是基于tcp的libpq。</p>
-<p>时间已经凌晨一点多了，晚安</p>
+    <p>前一段时间<a href="https://github.com/greenplum-db/gpdb">GreenPlum</a>数据库正式开源了，对于整个行业来说冲击比较大。李元佳(华为/PostgresSQL)写了两篇文章分享分析为什么GreenPlum要开源，以及其开源的影响。 <br />
+我相信很多数据厂商在第一时间拿到了相关的已经开发的技术文档以及在github上托管的代码进行分析，作为一个数据库内核开发人员而言，可能不会直接面对其对市场的冲击带来的压力，但是学习并研究其相关的代码，能够接地气的深入了解到前沿的技术，对自己也是一个很大的提升。  </p>
+<p><strong><em>GreenPlum</em></strong>相关的开源协议以及其各种高大上的介绍，这里就不重复再重复了，网上太多了。提一点, GreenPlum是基于PostgreSQL 8.2.13内版本做的开发，当然可能最初的版本不是这个，通过一系列开源特性回合回合到这个版本。通过copyrights可以看到，从06年到现在，GreenPlum已经做了10年了，时间可以证明一切，在此表示敬意。  </p>
+<p>鉴于自己的工作性质，我可能从以下几个方面学习并分享其技术: 进程管理、高可用、备份、恢复以及存储管理等。随着自己学习的加深也可能会多少涉及到其他部分。  </p>
+<p>相对PostgreSQL而言，GreenPlum的进程管理要复杂的多，我们知道在PostgreSQL中通过针对pmState采用状态机进行自我管理。通过阅读GreenPlum的代码我们会发现，其在更high level上增加了一个叫pmModuleState的结构用以管理HA的transition/replication等，复杂度要高的多。  </p>
+<h4>在GreenPlum中primary主要包含以下几个进程(ckp/bgw等暂不考虑):</h4>
+<ul>
+<li>1 postmaster process                      <em>和PostgreSQL功能基本类似，不再详述</em>  </li>
+<li>2 primary process                         <em>负责拉起所有primary相关的进程并负责相关的日志刷新(FileRep_Main)</em>  </li>
+<li>3 primary receiver ack process                <em>接受listensocket0上的连接，连接建立后处理mirror发送的的ack消息,将消息插入shmem(FileRepAckPrimary_RunReceiver)</em>  </li>
+<li>4 primary sender process                  <em>发起连接连mirror，监控fileRepShmemArray上的信息，重组业务消息发送给mirror(FileRepPrimary_RunSender)</em>  </li>
+<li>5 primary consumer ack process                <em>处理receiver ack收到的消息, 更新到fileRepAckHashShmem-&gt;hash哈希表中(FileRepAckPrimary_RunConsumer)</em>  </li>
+<li>6 primary recovery progress               <em>根绝各种消息类型，定期插入不同的hearbeat消息到哈希表，并检查最终从mirror返回更新到哈希表的状态(FileRepPrimary_RunHeartBeat)</em>  </li>
+<li>7 primary verification progress           <em>verify进程，根据请求进行verify(FileRepPrimary_StartVerification)</em>  </li>
+<li>8 sweeper progress                            <em>没有细看，字面意思类似于PostgreSQL中的vacuum,只不过监控的是每个backend的CPU状态(BackoffSweeper)</em>  </li>
+</ul>
+<h4>mirror主要包含以下几个进程：</h4>
+<ul>
+<li>1 postmaster process                      <em>和PostgreSQL功能基本类似，不再详述</em>  </li>
+<li>2 mirror progress                         <em>负责拉起所有mirror相关的进程并负责相关的日志刷新(FileRep_Main)</em>  </li>
+<li>3 mirror receiver progress                    <em>接受listenSocket0上的连接，连接建立后处理primary发送的业务消息，通过内部的状态转换决定当前处理方式环节，如先获取消息类型，reserve消息空间，接受数据，通知消费者等(FileRepMirror_RunReceiver)</em>  </li>
+<li>4 mirror consumer progress                    <em>consumer，类型为FileRepMessageTypeXLog，处理消息中的具体文件操作信息，如打开、写数据、刷盘、关闭，truncate等(FileRepMirror_RunConsumer)</em>  </li>
+<li>5 mirror consumer writer progress         <em>consumer，类型为FileRepMessageTypeWriter，同上</em>  </li>
+<li>6 mirror consumer append only progress        <em>consumer，类型为FileRepMessageTypeAO01，同上</em>  </li>
+<li>8 mirror sender ack progress              <em>发起连接连primary，监控fileRepAckShmemArray上的信息, 发送ack消息给primary(FileRepAckMirror_RunReceiver)</em>  </li>
+<li>9 mirror verification progress                <em>consumer，类型为FileRepMessageTypeVerify，同上</em>  </li>
+</ul>
+<p>限于GreeenPlum代码的复杂程度，当前理解有限。先到这里了，后面会加入业务操作，从WAL/数据角度看HA以及进程在GreenPlum中是如何运作的， 如果你对PostgreSQL了解的话，此时应该可以有点眉目了，就是GreenPlum中的primary/mirror同步不单单是WAL。<br />
+一般而言看这种复杂的数据库，可以从多个角度，我一般喜欢从常驻进程/线程分析，看看什么条件会收到请求，这些请求被如何处理了，这些请求的来源又是什么等等。<br />
+补充一点，程序内部多进程采用的是ipc和shmem同步到消息，程序间走的是基于tcp的libpq。  </p>
+<p>时间已经凌晨一点多了，晚安  </p>
 <p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
 
     Tagged: 
