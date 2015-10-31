@@ -4,7 +4,7 @@
     <!-- Set the viewport width to device width for mobile -->
     <meta name="viewport" content="width=device-width" />
 
-    <title>Lovelife</title>
+    <title>GreenPlum进程结构简介</title>
 
     <link rel="stylesheet" href="http://lannis.github.io/theme/css/normalize.css" />
     <link rel="stylesheet" href="http://lannis.github.io/theme/css/foundation.min.css" />
@@ -42,16 +42,17 @@
 
     <!-- Main Blog Content -->
     <div class="large-9 columns">
-        
-        
+<article>
+    <header>
+        <h3 class="article-title"><a href="http://lannis.github.io/articles/greeplum-code-analysis-01/" rel="bookmark"
+        title="Permalink to GreenPlum进程结构简介">GreenPlum进程结构简介</a></h3>
+    </header>
 
-            <article>
-                <a href="http://lannis.github.io/articles/greeplum-code-analysis-01/"><h3 class="article-title">GreenPlum进程结构简介</h3></a>
 <h6 class="subheader" title="2015-10-31T22:45:00+08:00">2015-10-31
 </h6>
 
 
-<p>前一段时间<a href="https://github.com/greenplum-db/gpdb">GreenPlum</a>数据库正式开源了，对于整个行业来说冲击比较大。李元佳(华为/PostgresSQL)写了两篇文章分享分析为什么GreenPlum要开源，以及其开源的影响。<br />
+    <p>前一段时间<a href="https://github.com/greenplum-db/gpdb">GreenPlum</a>数据库正式开源了，对于整个行业来说冲击比较大。李元佳(华为/PostgresSQL)写了两篇文章分享分析为什么GreenPlum要开源，以及其开源的影响。<br />
 我相信很多数据厂商在第一时间拿到了相关的已经开发的技术文档以及在github上托管的代码进行分析，作为一个数据库内核开发人员而言，可能不会直接面对其对市场的冲击带来的压力，但是学习并研究其相关的代码，能够接地气的深入了解到前沿的技术，对自己也是一个很大的提升。</p>
 <p><strong><em>GreenPlum</em></strong>相关的开源协议以及其各种高大上的介绍，这里就不重复再重复了，网上太多了。提一点, GreenPlum是基于PostgreSQL 8.2.13内版本做的开发，当然可能最初的版本不是这个，通过一系列开源特性回合回合到这个版本。通过copyrights可以看到，从06年到现在，GreenPlum已经做了10年了，时间可以证明一切，在此表示敬意。</p>
 <p>鉴于自己的工作性质，我可能从以下几个方面学习并分享其技术: 进程管理、高可用、备份、恢复以及存储管理等。随着自己学习的加深也可能会多少涉及到其他部分。</p>
@@ -77,7 +78,8 @@
 <p>限于GreeenPlum代码的复杂程度，当前理解有限。先到这里了，后面会加入业务操作，从WAL/数据角度看HA以及进程在GreenPlum中是如何运作的， 如果你对PostgreSQL了解的话，此时应该可以有点眉目了，就是GreenPlum中的primary/mirror同步不单单是WAL。
 一般而言看这种复杂的数据库，可以从多个角度，我一般喜欢从常驻进程/线程分析，看看什么条件会收到请求，这些请求被如何处理了，这些请求的来源又是什么等等。
 补充一点，程序内部多进程采用的是ipc和shmem同步到消息，程序间走的是基于tcp的libpq。</p>
-<p>时间已经凌晨一点多了，晚安</p><p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
+<p>时间已经凌晨一点多了，晚安</p>
+<p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
 
     Tagged: 
     <a href="http://lannis.github.io/tag/greenplum.html">GreenPlum </a>
@@ -85,110 +87,22 @@
 
 
 
-<p><a href="http://lannis.github.io/articles/greeplum-code-analysis-01/#disqus_thread">comments</a></p>            </article>
 
+	<h4>Comments</h4>
+    <div id="disqus_thread"></div>
+    <script type="text/javascript">
+        var disqus_shortname = 'loveulife'
+        var disqus_identifier = "articles/greeplum-code-analysis-01/";
+        var disqus_url = "http://lannis.github.io/articles/greeplum-code-analysis-01/";
 
-                <hr  class="gradient"/>
-
-
-        
-
-
-            <article>
-                <a href="http://lannis.github.io/articles/rewind/"><h3 class="article-title">rewind in PostgreSQL</h3></a>
-<h6 class="subheader" title="2015-10-30T21:30:00+08:00">2015-10-30
-</h6>
-
-
-<p>PostgreSQL数据库中rewind工具的介绍</p><p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
-
-    Tagged: 
-    <a href="http://lannis.github.io/tag/rewind.html">rewind </a>
-    <a href="http://lannis.github.io/tag/rman.html">rman </a>
-    <a href="http://lannis.github.io/tag/postgresql.html">PostgreSQL </a>
-</p>
-
-
-
-<p><a href="http://lannis.github.io/articles/rewind/#disqus_thread">comments</a></p>                <a class="button radius secondary small right" href="http://lannis.github.io/articles/rewind/">Read More</a>
-                <hr  class="gradient"/>
-            </article>
-
-        
-
-
-            <article>
-                <a href="http://lannis.github.io/articles/learning/"><h3 class="article-title">timeline in PostgreSQL</h3></a>
-<h6 class="subheader" title="2015-09-17T22:20:00+08:00">2015-09-17
-</h6>
-
-
-<p>PostgreSQL数据库中时间线的介绍</p><p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
-
-    Tagged: 
-    <a href="http://lannis.github.io/tag/timeline.html">timeline </a>
-    <a href="http://lannis.github.io/tag/postgresql.html">PostgreSQL </a>
-</p>
-
-
-
-<p><a href="http://lannis.github.io/articles/learning/#disqus_thread">comments</a></p>                <a class="button radius secondary small right" href="http://lannis.github.io/articles/learning/">Read More</a>
-                <hr  class="gradient"/>
-            </article>
-
-        
-
-
-            <article>
-                <a href="http://lannis.github.io/articles/想你/"><h3 class="article-title">70周年</h3></a>
-<h6 class="subheader" title="2015-09-04T00:32:00+08:00">2015-09-04
-</h6>
-
-
-<p>中国人民抗日战争暨反法西斯战争胜利70周年</p><p class="subheader">Category: <a href="http://lannis.github.io/category/sui-feng-qian-ru-ye.html">随风潜入夜</a>
-
-    Tagged: 
-    <a href="http://lannis.github.io/tag/kang-zhan.html">抗战 </a>
-    <a href="http://lannis.github.io/tag/ping-lun.html">评论 </a>
-</p>
-
-
-
-<p><a href="http://lannis.github.io/articles/想你/#disqus_thread">comments</a></p>                <a class="button radius secondary small right" href="http://lannis.github.io/articles/想你/">Read More</a>
-                <hr  class="gradient"/>
-            </article>
-
-        
-
-
-            <article>
-                <a href="http://lannis.github.io/articles/About Me/"><h3 class="article-title">About Me</h3></a>
-<h6 class="subheader" title="2015-09-01T07:49:00+08:00">2015-09-01
-</h6>
-
-
-<p>Hello Pelican, Mardown and Github Blogs.</p><p class="subheader">Category: <a href="http://lannis.github.io/category/uncategorized.html">Uncategorized</a>
-
-    Tagged: 
-    <a href="http://lannis.github.io/tag/pelican.html">Pelican </a>
-    <a href="http://lannis.github.io/tag/markdown.html">Markdown </a>
-</p>
-
-
-
-<p><a href="http://lannis.github.io/articles/About Me/#disqus_thread">comments</a></p>                <a class="button radius secondary small right" href="http://lannis.github.io/articles/About Me/">Read More</a>
-                <hr  class="gradient"/>
-            </article>
-
-            <!-- /#posts-list -->
-<div class="pagination-centered">
-<h6 class="subheader">Page 1 of 1</h6>
-
-<p>
-
-</p>
-</div>
-
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</article>
     </div>
     <!-- End Main Content -->
 

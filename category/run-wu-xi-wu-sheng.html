@@ -46,30 +46,61 @@
         
 
             <article>
+                <a href="http://lannis.github.io/articles/greeplum-code-analysis-01/"><h3 class="article-title">GreenPlum进程结构简介</h3></a>
+<h6 class="subheader" title="2015-10-31T22:45:00+08:00">2015-10-31
+</h6>
+
+
+<p>前一段时间<a href="https://github.com/greenplum-db/gpdb">GreenPlum</a>数据库正式开源了，对于整个行业来说冲击比较大。李元佳(华为/PostgresSQL)写了两篇文章分享分析为什么GreenPlum要开源，以及其开源的影响。<br />
+我相信很多数据厂商在第一时间拿到了相关的已经开发的技术文档以及在github上托管的代码进行分析，作为一个数据库内核开发人员而言，可能不会直接面对其对市场的冲击带来的压力，但是学习并研究其相关的代码，能够接地气的深入了解到前沿的技术，对自己也是一个很大的提升。</p>
+<p><strong><em>GreenPlum</em></strong>相关的开源协议以及其各种高大上的介绍，这里就不重复再重复了，网上太多了。提一点, GreenPlum是基于PostgreSQL 8.2.13内版本做的开发，当然可能最初的版本不是这个，通过一系列开源特性回合回合到这个版本。通过copyrights可以看到，从06年到现在，GreenPlum已经做了10年了，时间可以证明一切，在此表示敬意。</p>
+<p>鉴于自己的工作性质，我可能从以下几个方面学习并分享其技术: 进程管理、高可用、备份、恢复以及存储管理等。随着自己学习的加深也可能会多少涉及到其他部分。</p>
+<p>相对PostgreSQL而言，GreenPlum的进程管理要复杂的多，我们知道在PostgreSQL中通过针对pmState采用状态机进行自我管理。通过阅读GreenPlum的代码我们会发现，其在更high level上增加了一个叫pmModuleState的结构用以管理HA的transition/replication等，复杂度要高的多。</p>
+<p>在GreenPlum中primary主要包含以下几个进程(ckp/bgw等暂不考虑):
+<em>1 postmaster process                       </em>和PostgreSQL功能基本类似，不再详述<em>
+</em>2 primary process                          <em>负责拉起所有primary相关的进程并负责相关的日志刷新(FileRep_Main)</em>
+<em>3 primary receiver ack process             </em>接受listensocket0上的连接，连接建立后处理mirror发送的的ack消息,将消息插入shmem(FileRepAckPrimary_RunReceiver)<em>
+</em>4 primary sender process                   <em>发起连接连mirror，监控fileRepShmemArray上的信息，重组业务消息发送给mirror(FileRepPrimary_RunSender)</em>
+<em>5 primary consumer ack process             </em>处理receiver ack收到的消息, 更新到fileRepAckHashShmem-&gt;hash哈希表中(FileRepAckPrimary_RunConsumer)<em>
+</em>6 primary recovery progress                <em>根绝各种消息类型，定期插入不同的hearbeat消息到哈希表，并检查最终从mirror返回更新到哈希表的状态(FileRepPrimary_RunHeartBeat)</em>
+<em>7 primary verification progress            </em>verify进程，根据请求进行verify(FileRepPrimary_StartVerification)<em>
+</em>8 sweeper progress                         <em>没有细看，字面意思类似于PostgreSQL中的vacuum,只不过监控的是每个backend的CPU状态(BackoffSweeper)</em></p>
+<p>mirror主要包含以下几个进程：
+<em>1 postmaster process                       </em>和PostgreSQL功能基本类似，不再详述<em>
+</em>2 mirror progress                          <em>负责拉起所有mirror相关的进程并负责相关的日志刷新(FileRep_Main)</em>
+<em>3 mirror receiver progress                 </em>接受listenSocket0上的连接，连接建立后处理primary发送的业务消息，通过内部的状态转换决定当前处理方式环节，如先获取消息类型，reserve消息空间，接受数据，通知消费者等(FileRepMirror_RunReceiver)<em>
+</em>4 mirror consumer progress                 <em>consumer，类型为FileRepMessageTypeXLog，处理消息中的具体文件操作信息，如打开、写数据、刷盘、关闭，truncate等(FileRepMirror_RunConsumer)</em>
+<em>5 mirror consumer writer progress          </em>consumer，类型为FileRepMessageTypeWriter，同上<em>
+</em>6 mirror consumer append only progress     <em>consumer，类型为FileRepMessageTypeAO01，同上</em>
+<em>8 mirror sender ack progress               </em>发起连接连primary，监控fileRepAckShmemArray上的信息, 发送ack消息给primary(FileRepAckMirror_RunReceiver)<em>
+</em>9 mirror verification progress             <em>consumer，类型为FileRepMessageTypeVerify，同上</em></p>
+<p>限于GreeenPlum代码的复杂程度，当前理解有限。先到这里了，后面会加入业务操作，从WAL/数据角度看HA以及进程在GreenPlum中是如何运作的， 如果你对PostgreSQL了解的话，此时应该可以有点眉目了，就是GreenPlum中的primary/mirror同步不单单是WAL。
+一般而言看这种复杂的数据库，可以从多个角度，我一般喜欢从常驻进程/线程分析，看看什么条件会收到请求，这些请求被如何处理了，这些请求的来源又是什么等等。
+补充一点，程序内部多进程采用的是ipc和shmem同步到消息，程序间走的是基于tcp的libpq。</p>
+<p>时间已经凌晨一点多了，晚安</p><p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
+
+    Tagged: 
+    <a href="http://lannis.github.io/tag/greenplum.html">GreenPlum </a>
+</p>
+
+
+
+<p><a href="http://lannis.github.io/articles/greeplum-code-analysis-01/#disqus_thread">comments</a></p>            </article>
+
+
+                <hr  class="gradient"/>
+
+
+        
+
+
+            <article>
                 <a href="http://lannis.github.io/articles/rewind/"><h3 class="article-title">rewind in PostgreSQL</h3></a>
 <h6 class="subheader" title="2015-10-30T21:30:00+08:00">2015-10-30
 </h6>
 
 
-<p><strong><em>一个月</em></strong>没有写文章了，这一个月确实比较忙。十一西安到北京，转至青岛，回家，返回西安。回来后又要驾照考试。  </p>
-<p>回到正文上次写到本文准备介绍一下时间线的问题，基于当前的形式，暂且放一下，今天我来介绍PostgreSQL中一个工具rewind。rewind是一个增量备份工具，最早由vmware开发，后来推送到社区后被接纳，我们得以学习到，其实在去年，基于工作性质，我们就做过类似rewind的demo，只是限于时间没有好好细化，搁置了半年之久，后来发现rewind社区已经做了，我花了半天的时间读了一下相关的代码，结构和思想还是比较清晰的。  </p>
-<p>PostgreSQL中传统的全量备份是基于文件系统的拷贝，为了保证在线备份及恢复的一致性，PostgreSQL增加了备份模式，这里不在详细介绍。后来有一个类似的外部工具出现了--rman，日本写的。rman支持全量和增量，全量为文件拷贝，增量是基于全量的基础上，通过当前全量备份的LSN与当前数据页面的LSN作比较，在数据量大时效率仍然不是很好。  </p>
-<p>与rman不同的是rewind采用了一种全新的视角来修复primary/standby关系，rewind通过解析备机上的WAL日志文件逆向获取那些需要还原的数据信息从主机上讲需要还原的信息重新同步到备机。原因是通过日志我们可以获知在备机上发生了什么，参见前文。有两个前提：  备机上从某一时刻和主机分道扬镳，这一个时刻的日志我们可以获取到，并且后续的日志都存在；fullpagewrite。第一个前提比较好理解，第二个前提具体在下文介绍。  </p>
-<p>rewind工具没有采用传统的备机视角，而是采用的普通的客户端视角，通过一系列SQL查询获取其需要的信息。主要过程有以下几部分：<br />
-1.必要的参数检查。<br />
-2.连接主机，对比主备机上control文件，确定两者同源及一些条件的检查。<br />
-3.根据时间线历史文件获取主备分开的日志LSN。<br />
-4.检查当前的备机是否可以不需要做rewind。<br />
-5.前向扫描日志，找到主备一致点前的checkpoint，以这个checkpoint为基准向后解析日志。<br />
-6.初始化filemap结构，后续用来存储需要同步的文件及页面信息。<br />
-7.通过SQL查询的方式获取主机上所有的文件信息，并于本地文件比较，有几种情况，主机上有备机上没有(COPY)，主机比备机大(COPYTAIL)，备机比主机大(TRUNCATE)等等。<br />
-8.读取备机上的文件，检查哪些文件不在主机的文件列表中，需要插入到filemap中标记为要删除(REMOVE)。<br />
-9.从前面找的checkpoint开始解析日志，获取日志中的bkpb中的rel block信息，讲此信息以bit map的方式插入到filemap结构中。<br />
-10.对最终生成的filemap做排序。<br />
-11.遍历filemap，分类处理每一种类型，对于需要向主机同步的，采用SQL的方式，创建临时表，将所有需要向主机同步的文件/块信息以记录的方式放到表中。执行特定的语句，主机遍历临时表中的记录，读取相应的文件/块，发送到备机。<br />
-12.创建backuplabel文件以及调整control文件。<br />
-13.手动以备机方式拉起。  </p>
-<p>整体而言rewind的思想很不错，数据量大时不需要去遍历所有的数据文件，但是限制也颇多，比如，需要完全保留日志，对主备机的停止模式有严格的要求，必须打开fullpagewrite，等等。尽管如此，仍然不失为一个高效率的主备修复工具。当然在很多方面可以做优化，使得工具的适用范围更加广。</p><p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
+<p>PostgreSQL数据库中rewind工具的介绍</p><p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
 
     Tagged: 
     <a href="http://lannis.github.io/tag/rewind.html">rewind </a>
@@ -79,11 +110,9 @@
 
 
 
-<p><a href="http://lannis.github.io/articles/rewind/#disqus_thread">comments</a></p>            </article>
-
-
+<p><a href="http://lannis.github.io/articles/rewind/#disqus_thread">comments</a></p>                <a class="button radius secondary small right" href="http://lannis.github.io/articles/rewind/">Read More</a>
                 <hr  class="gradient"/>
-
+            </article>
 
         
 
