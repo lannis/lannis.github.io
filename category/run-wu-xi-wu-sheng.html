@@ -46,38 +46,40 @@
         
 
             <article>
-                <a href="http://lannis.github.io/articles/greeplum-code-analysis-01/"><h3 class="article-title">GreenPlum进程结构简介</h3></a>
-<h6 class="subheader" title="2015-10-31T22:45:00+08:00">2015-10-31
+                <a href="http://lannis.github.io/articles/greeplum-code-analysis-02/"><h3 class="article-title">GreenPlum中高可用实现与恢复简介</h3></a>
+<h6 class="subheader" title="2015-11-04T00:03:00+08:00">2015-11-04
 </h6>
 
 
-<p>前一段时间<a href="https://github.com/greenplum-db/gpdb">GreenPlum</a>数据库正式开源了，对于整个行业来说冲击比较大。李元佳(华为/PostgresSQL)写了两篇文章分享分析为什么GreenPlum要开源，以及其开源的影响。 <br />
-我相信很多数据厂商在第一时间拿到了相关的已经开发的技术文档以及在github上托管的代码进行分析，作为一个数据库内核开发人员而言，可能不会直接面对其对市场的冲击带来的压力，但是学习并研究其相关的代码，能够接地气的深入了解到前沿的技术，对自己也是一个很大的提升。  </p>
-<p><strong><em>GreenPlum</em></strong>相关的开源协议以及其各种高大上的介绍，这里就不重复再重复了，网上太多了。提一点, GreenPlum是基于PostgreSQL 8.2.13内版本做的开发，当然可能最初的版本不是这个，通过一系列开源特性回合回合到这个版本。通过copyrights可以看到，从06年到现在，GreenPlum已经做了10年了，时间可以证明一切，在此表示敬意。  </p>
-<p>鉴于自己的工作性质，我可能从以下几个方面学习并分享其技术: 进程管理、高可用、备份、恢复以及存储管理等。随着自己学习的加深也可能会多少涉及到其他部分。  </p>
-<p>相对PostgreSQL而言，GreenPlum的进程管理要复杂的多，我们知道在PostgreSQL中通过针对pmState采用状态机进行自我管理。通过阅读GreenPlum的代码我们会发现，其在更high level上增加了一个叫pmModuleState的结构用以管理HA的transition/replication等，复杂度要高的多。  </p>
-<p>在GreenPlum中primary主要包含以下几个进程(ckp/bgw等暂不考虑):<br />
-<em> 1 postmaster process                      </em>和PostgreSQL功能基本类似，不再详述<em><br />
-</em> 2 primary process                         <em>负责拉起所有primary相关的进程并负责相关的日志刷新(FileRep_Main)</em><br />
-<em> 3 primary receiver ack process                </em>接受listensocket0上的连接，连接建立后处理mirror发送的的ack消息,将消息插入shmem(FileRepAckPrimary_RunReceiver)<em><br />
-</em> 4 primary sender process                  <em>发起连接连mirror，监控fileRepShmemArray上的信息，重组业务消息发送给mirror(FileRepPrimary_RunSender)</em><br />
-<em> 5 primary consumer ack process                </em>处理receiver ack收到的消息, 更新到fileRepAckHashShmem-&gt;hash哈希表中(FileRepAckPrimary_RunConsumer)<em><br />
-</em> 6 primary recovery progress               <em>根绝各种消息类型，定期插入不同的hearbeat消息到哈希表，并检查最终从mirror返回更新到哈希表的状态(FileRepPrimary_RunHeartBeat)</em><br />
-<em> 7 primary verification progress           </em>verify进程，根据请求进行verify(FileRepPrimary_StartVerification)<em><br />
-</em> 8 sweeper progress                            <em>没有细看，字面意思类似于PostgreSQL中的vacuum,只不过监控的是每个backend的CPU状态(BackoffSweeper)</em>  </p>
-<p>mirror主要包含以下几个进程：<br />
-<em> 1 postmaster process                      </em>和PostgreSQL功能基本类似，不再详述<em><br />
-</em> 2 mirror progress                         <em>负责拉起所有mirror相关的进程并负责相关的日志刷新(FileRep_Main)</em><br />
-<em> 3 mirror receiver progress                    </em>接受listenSocket0上的连接，连接建立后处理primary发送的业务消息，通过内部的状态转换决定当前处理方式环节，如先获取消息类型，reserve消息空间，接受数据，通知消费者等(FileRepMirror_RunReceiver)<em><br />
-</em> 4 mirror consumer progress                    <em>consumer，类型为FileRepMessageTypeXLog，处理消息中的具体文件操作信息，如打开、写数据、刷盘、关闭，truncate等(FileRepMirror_RunConsumer)</em><br />
-<em> 5 mirror consumer writer progress         </em>consumer，类型为FileRepMessageTypeWriter，同上<em><br />
-</em> 6 mirror consumer append only progress        <em>consumer，类型为FileRepMessageTypeAO01，同上</em><br />
-<em> 8 mirror sender ack progress              </em>发起连接连primary，监控fileRepAckShmemArray上的信息, 发送ack消息给primary(FileRepAckMirror_RunReceiver)<em><br />
-</em> 9 mirror verification progress                <em>consumer，类型为FileRepMessageTypeVerify，同上</em>  </p>
-<p>限于GreeenPlum代码的复杂程度，当前理解有限。先到这里了，后面会加入业务操作，从WAL/数据角度看HA以及进程在GreenPlum中是如何运作的， 如果你对PostgreSQL了解的话，此时应该可以有点眉目了，就是GreenPlum中的primary/mirror同步不单单是WAL。<br />
-一般而言看这种复杂的数据库，可以从多个角度，我一般喜欢从常驻进程/线程分析，看看什么条件会收到请求，这些请求被如何处理了，这些请求的来源又是什么等等。<br />
-补充一点，程序内部多进程采用的是ipc和shmem同步到消息，程序间走的是基于tcp的libpq。  </p>
-<p>时间已经凌晨一点多了，晚安  </p><p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
+<p><strong><em>在上一篇</em></strong>文章中介绍了除了master外，primary和mirror的进程以及其主要的作用。本文主要从业务流程上将各个进程的处理功能串联一下。 </p>
+<h4>GreenPlum中的文件</h4>
+<p><strong><em>在PostgreSQL数据库</em></strong>中主要存在两类文件：数据文件和非数据文件。这两个概念在GreenPlum中用BufferPoolFile和FlatFile来说明。相对于PostgreSQL，在GreenPlum增加了另外一种文件类别--append only，什么意思呢？查了一下相关的概念:  </p>
+<blockquote>
+<p>This allows for more compact storage on disk because each row does not need to store the MVCC(Unlike traditional database systems which use locks for concurrency control, Greenplum Database (as does PostgreSQL) maintains data consistency by using a multiversion model (multiversion concurrency control or MVCC). This means that while querying a database, each transaction sees a snapshot of data which protects the transaction from viewing inconsistent data that could be caused by (other) concurrent updates on the same data rows. This provides transaction isolation for each database session.MVCC, by eschewing explicit locking methodologies of traditional database systems, minimizes lock contention in order to allow for reasonable performance in multiuser environments. The main advantage to using the MVCC model of concurrency control rather than locking is that in MVCC locks acquired for querying (reading) data do not conflict with locks acquired for writing data, and so reading never blocks writing and writing never blocks reading.) transaction visibility info. This saves 20 bytes per row. AO tables can also be compressed.  </p>
+</blockquote>
+<p><strong><em>根据前面</em></strong>介绍的primary和mirror多进程差异，需要思考的一个问题是，数据如何在其之间<em>同步</em>的？在GreenPlum中定义了一类文件同步操作接口，在primary上主要为FileRepPrimary_mirror<em>，在mirror上主要为FileRepMirror_</em>。  </p>
+<p><strong><em>前面提到</em></strong>在GreenPlum中总共有三类文件类型，拿primary为例，其在FileRepPrimary_mirror*之上封装了三类操作，分别为：<br />
+<code>cdb/cdbmirroredappendonly.c: MirroredAppendOnly_Open();MirroredAppendOnly_Create();...  
+cdb/cdbmirroredbufferpool.c: MirroredBufferPool_Open();MirroredBufferPool_Create();...  
+cdb/cdbmirroredflatfile.c: MirroredFlatFile_Open();MirroredFlatFile_Create();...</code><br />
+实际上在cdb目录下还存在另外一种mirror操作：cdbmirroredfilesysobj.c中定义的接口，实际上这些操作并没有直接参与primary-mirror同步，此处不详细展开。  </p>
+<h4>GreenPlum中的高可用</h4>
+<p><strong><em>那么</em></strong>介绍了这些接口的概念后，业务数据如何在primary和mirror间同步的呢？举一个很简单的列子：针对一个simple table，执行语句INSERT INTO table VALUES (...)往表中插入记录。语句经过词法-&gt;语法-&gt;语义-&gt;计划-&gt;优化-&gt;执行，可能简单语句会跳过很多处理，最终会调用heap_insert将记录插入到heap page中，并且针对这个插入操作封装一条xlog record插入到wal page中。数据最终被转化为格式化的信息存到了两类文件中，<em>数据文件</em>以及<em>日志文件</em>。在GreenPlum中这两种存储的信息会从primary同步到mirror。   </p>
+<p>回忆一下，在PostgreSQL中的高可用是这样的：主机(primary)上执行insert同样会产生数据和日志信息并写入存储介质，存在一个进程walsender进程，周期性检测日志文件是否被更新，看清楚是日志文件 日志文件 日志文件，如果发现日志文件发生更新，则<strong>从日志文件中</strong>读取新插入的那些日志记录，通过网络发送到备机(mirror)，备机alreceiver进程收到日志记录后写入到相应的日志文件中，由恢复进程startup读取文件中新写入的日志记录进行恢复，从而完成主备的一个同步过程。由于涉及到跨网络的进程传输，因此在walsender-walreceiver之间增加了心跳信息。  </p>
+<p><strong><em>GreenPlum</em></strong>与PostgreSQL不同之处在于，日志和数据都会同步到备机，而不单单是日志，并且同步的方式不同，信息的同步直接是从内存同步而没有经过写盘读取磁盘上的数据这样的过程，效率相对要高一些。  </p>
+<h5>日志同步</h5>
+<p><strong><em>产生日志时</em></strong>，backend进程会调用XLogWrite函数将日志信息写入磁盘，并且根据条件决定是否需要flush。在GreenPlum中，日志的打开读写都与主备同步点滴相关。写记录来举例一下，在PostgreSQL中使用write函数将日志写入磁盘就完了，在GreenPlum中要复杂的多，具体而言，因为日志文件是flat file，因此此处使用MirroredFlatFile_Write函数替换了write函数。    </p>
+<p>MirroredFlatFile_Write函数中，首先调用前面介绍的更底层的操作接口FileRepPrimary_MirrorWrite将数据发送给备机，然后使用FileSeek&amp;FileWrite接口将数据才真正的写入本地日志文件。    </p>
+<p>展开来看FileRepPrimary_MirrorWrite函数中，首先通过FileRep_ReserveShmem()从共享内存申请空间，然后针对要同步的数据，构造FileRepMessageHeader，将消息头以及需要同步的数据放入申请的共享空间。使用FileRep_IpcSignal通知消费者去共享内存中取数据。这个就是所谓前面提到的通过信号量及共享内存进行程序内多进程的同步。  </p>
+<p>这里的消费者就是primary sender进程，进程的工作方式以及作用参见前文中的介绍，sender进程将数据再封装发送到备机端， 备机的mirror receiver进程将受到的数据进行初步解析确定属于哪种类型的数据，将数据同样放入本地的接受共享空间，针对不同的数据类型使用ipc信号通知不同的消费者，这里就是为什么备机上会有三个消费者(mirror consumer、mirror consumer writer以及mirror consumer append only)的原因了。  </p>
+<p>当前场景下日志数据属于flat file，此处通知的是mirror comsumer进程，mirror comsumer进程从共享内存中取到最新的日志数据，发现类型为FileRepOperationWrite，将日志写入对应的日志文件。本次日志信息同步结束。  </p>
+<h5>数据同步</h5>
+<p><strong><em>数据同步</em></strong> 不同于日志同步，日志同步在日志记录产生时就会同步，而数据并非如此，INSERT修改或者产生页面后，页面被缓存在bufferpool中，当发生checkpoint时，会调用flushbuffer将所有脏页面刷盘，最终调用存储底层smgrwrite的实现mdwrite将数据页面写入磁盘。  </p>
+<p>在GreenPlum中数据的同步就发生在这个阶段，mdwrite真正的实现被封装为MirroredBufferPool_Write，就是我们上面提到的其中一类接口中的一种。MirroredBufferPool_Write底层调用FileRepPrimary_MirrorWrite将页面数据同步到备机，整体流程与日志类似，此处不再详述。  </p>
+<p><strong><em>实际上</em></strong>在GreenPlum中的主备同步，存在同步和异步的区别，即有些操作主机不需要等待数据同步到备机，比如前面提到的两类。同样存在其他操作需要强同步的，在GreenPlum中的实现方式一般为：主机先将操作信息放入发送共享队列，同时插入到共享哈希表中，然后进行本地操作，最后等待检查哈希表中备机反馈的信息完成后，操作才算完成。  </p>
+<h5>GreenPlum中的恢复</h5>
+<p>在GreenPlum中只有产生实际数据的实例才需要恢复，和PostgreSQL不同的是，因为数据是直接被同步到备机的，所以备机不需要恢复，在主机发生故障，备机failover时其效率肯定是很不错的。  对于primary和master而言，数据库的恢复与PostgreSQL基本类似，不同之处是在reaper中如果是startup进程退出，则根据条件会拉起另外几个恢复进程进行额外的处理。</p>
+<p>morning sweety.</p><p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
 
     Tagged: 
     <a href="http://lannis.github.io/tag/greenplum.html">GreenPlum </a>
@@ -85,11 +87,32 @@
 
 
 
-<p><a href="http://lannis.github.io/articles/greeplum-code-analysis-01/#disqus_thread">comments</a></p>            </article>
+<p><a href="http://lannis.github.io/articles/greeplum-code-analysis-02/#disqus_thread">comments</a></p>            </article>
 
 
                 <hr  class="gradient"/>
 
+
+        
+
+
+            <article>
+                <a href="http://lannis.github.io/articles/greeplum-code-analysis-01/"><h3 class="article-title">GreenPlum进程结构简介</h3></a>
+<h6 class="subheader" title="2015-10-31T22:45:00+08:00">2015-10-31
+</h6>
+
+
+<p>GreenPlum进程结构简介</p><p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
+
+    Tagged: 
+    <a href="http://lannis.github.io/tag/greenplum.html">GreenPlum </a>
+</p>
+
+
+
+<p><a href="http://lannis.github.io/articles/greeplum-code-analysis-01/#disqus_thread">comments</a></p>                <a class="button radius secondary small right" href="http://lannis.github.io/articles/greeplum-code-analysis-01/">Read More</a>
+                <hr  class="gradient"/>
+            </article>
 
         
 
@@ -161,7 +184,6 @@
         <ul class="side-nav">
             <li><a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a></li>
             <li><a href="http://lannis.github.io/category/sui-feng-qian-ru-ye.html">随风潜入夜</a></li>
-            <li><a href="http://lannis.github.io/category/uncategorized.html">Uncategorized</a></li>
    
         </ul>
 

@@ -4,7 +4,7 @@
     <!-- Set the viewport width to device width for mobile -->
     <meta name="viewport" content="width=device-width" />
 
-    <title>Lovelife - GreenPlum</title>
+    <title>GreenPlum中高可用实现与恢复简介</title>
 
     <link rel="stylesheet" href="http://lannis.github.io/theme/css/normalize.css" />
     <link rel="stylesheet" href="http://lannis.github.io/theme/css/foundation.min.css" />
@@ -42,16 +42,17 @@
 
     <!-- Main Blog Content -->
     <div class="large-9 columns">
-        
-        
+<article>
+    <header>
+        <h3 class="article-title"><a href="http://lannis.github.io/articles/greeplum-code-analysis-02/" rel="bookmark"
+        title="Permalink to GreenPlum中高可用实现与恢复简介">GreenPlum中高可用实现与恢复简介</a></h3>
+    </header>
 
-            <article>
-                <a href="http://lannis.github.io/articles/greeplum-code-analysis-02/"><h3 class="article-title">GreenPlum中高可用实现与恢复简介</h3></a>
 <h6 class="subheader" title="2015-11-04T00:03:00+08:00">2015-11-04
 </h6>
 
 
-<p><strong><em>在上一篇</em></strong>文章中介绍了除了master外，primary和mirror的进程以及其主要的作用。本文主要从业务流程上将各个进程的处理功能串联一下。 </p>
+    <p><strong><em>在上一篇</em></strong>文章中介绍了除了master外，primary和mirror的进程以及其主要的作用。本文主要从业务流程上将各个进程的处理功能串联一下。 </p>
 <h4>GreenPlum中的文件</h4>
 <p><strong><em>在PostgreSQL数据库</em></strong>中主要存在两类文件：数据文件和非数据文件。这两个概念在GreenPlum中用BufferPoolFile和FlatFile来说明。相对于PostgreSQL，在GreenPlum增加了另外一种文件类别--append only，什么意思呢？查了一下相关的概念:  </p>
 <blockquote>
@@ -79,7 +80,8 @@ cdb/cdbmirroredflatfile.c: MirroredFlatFile_Open();MirroredFlatFile_Create();...
 <p><strong><em>实际上</em></strong>在GreenPlum中的主备同步，存在同步和异步的区别，即有些操作主机不需要等待数据同步到备机，比如前面提到的两类。同样存在其他操作需要强同步的，在GreenPlum中的实现方式一般为：主机先将操作信息放入发送共享队列，同时插入到共享哈希表中，然后进行本地操作，最后等待检查哈希表中备机反馈的信息完成后，操作才算完成。  </p>
 <h5>GreenPlum中的恢复</h5>
 <p>在GreenPlum中只有产生实际数据的实例才需要恢复，和PostgreSQL不同的是，因为数据是直接被同步到备机的，所以备机不需要恢复，在主机发生故障，备机failover时其效率肯定是很不错的。  对于primary和master而言，数据库的恢复与PostgreSQL基本类似，不同之处是在reaper中如果是startup进程退出，则根据条件会拉起另外几个恢复进程进行额外的处理。</p>
-<p>morning sweety.</p><p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
+<p>morning sweety.</p>
+<p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
 
     Tagged: 
     <a href="http://lannis.github.io/tag/greenplum.html">GreenPlum </a>
@@ -87,42 +89,22 @@ cdb/cdbmirroredflatfile.c: MirroredFlatFile_Open();MirroredFlatFile_Create();...
 
 
 
-<p><a href="http://lannis.github.io/articles/greeplum-code-analysis-02/#disqus_thread">comments</a></p>            </article>
 
+	<h4>Comments</h4>
+    <div id="disqus_thread"></div>
+    <script type="text/javascript">
+        var disqus_shortname = 'loveulife'
+        var disqus_identifier = "articles/greeplum-code-analysis-02/";
+        var disqus_url = "http://lannis.github.io/articles/greeplum-code-analysis-02/";
 
-                <hr  class="gradient"/>
-
-
-        
-
-
-            <article>
-                <a href="http://lannis.github.io/articles/greeplum-code-analysis-01/"><h3 class="article-title">GreenPlum进程结构简介</h3></a>
-<h6 class="subheader" title="2015-10-31T22:45:00+08:00">2015-10-31
-</h6>
-
-
-<p>GreenPlum进程结构简介</p><p class="subheader">Category: <a href="http://lannis.github.io/category/run-wu-xi-wu-sheng.html">润物细无声</a>
-
-    Tagged: 
-    <a href="http://lannis.github.io/tag/greenplum.html">GreenPlum </a>
-</p>
-
-
-
-<p><a href="http://lannis.github.io/articles/greeplum-code-analysis-01/#disqus_thread">comments</a></p>                <a class="button radius secondary small right" href="http://lannis.github.io/articles/greeplum-code-analysis-01/">Read More</a>
-                <hr  class="gradient"/>
-            </article>
-
-            <!-- /#posts-list -->
-<div class="pagination-centered">
-<h6 class="subheader">Page 1 of 1</h6>
-
-<p>
-
-</p>
-</div>
-
+        (function() {
+            var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+            dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+        })();
+    </script>
+    <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</article>
     </div>
     <!-- End Main Content -->
 
