@@ -5,30 +5,37 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>http://lannis.github.io/</loc>
-<lastmod>2015-11-07T20:46:26-00:00</lastmod>
+<lastmod>2015-11-14T01:29:36-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.8</priority>
 </url>
 
 <url>
 <loc>http://lannis.github.io/archives.html</loc>
-<lastmod>2015-11-07T20:46:26-00:00</lastmod>
+<lastmod>2015-11-14T01:29:36-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.8</priority>
 </url>
 
 <url>
 <loc>http://lannis.github.io/tags.html</loc>
-<lastmod>2015-11-07T20:46:26-00:00</lastmod>
+<lastmod>2015-11-14T01:29:36-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.8</priority>
 </url>
 
 <url>
 <loc>http://lannis.github.io/categories.html</loc>
-<lastmod>2015-11-07T20:46:26-00:00</lastmod>
+<lastmod>2015-11-14T01:29:36-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.8</priority>
+</url>
+
+<url>
+<loc>http://lannis.github.io/articles/greeplum-code-analysis-03/</loc>
+<lastmod>2015-11-13T23:32:00+08:00</lastmod>
+<changefreq>daily</changefreq>
+<priority>1</priority>
 </url>
 
 <url>
@@ -75,7 +82,7 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>http://lannis.github.io/category/run-wu-xi-wu-sheng.html</loc>
-<lastmod>2015-11-04T00:03:00+08:06</lastmod>
+<lastmod>2015-11-13T23:32:00+08:06</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.8</priority>
 </url>
@@ -131,7 +138,7 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>http://lannis.github.io/tag/greenplum.html</loc>
-<lastmod>2015-11-04T00:03:00+08:06</lastmod>
+<lastmod>2015-11-13T23:32:00+08:06</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.8</priority>
 </url>
@@ -152,7 +159,7 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>http://lannis.github.io/author/lannis.html</loc>
-<lastmod>2015-11-04T00:03:00+08:06</lastmod>
+<lastmod>2015-11-13T23:32:00+08:06</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.8</priority>
 </url>

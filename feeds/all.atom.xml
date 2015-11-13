@@ -1,5 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Lovelife</title><link href="http://lannis.github.io/" rel="alternate"></link><link href="http://lannis.github.io/feeds/all.atom.xml" rel="self"></link><id>http://lannis.github.io/</id><updated>2015-11-04T00:03:00+08:00</updated><entry><title>GreenPlum中高可用实现与恢复简介</title><link href="http://lannis.github.io/articles/greeplum-code-analysis-02/" rel="alternate"></link><updated>2015-11-04T00:03:00+08:00</updated><author><name>Lannis</name></author><id>tag:lannis.github.io,2015-11-04:articles/greeplum-code-analysis-02/</id><summary type="html">&lt;p&gt;&lt;strong&gt;&lt;em&gt;在上一篇&lt;/em&gt;&lt;/strong&gt;文章中介绍了除了master外，primary和mirror的进程以及其主要的作用。本文主要从业务流程上将各个进程的处理功能串联一下。 &lt;/p&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Lovelife</title><link href="http://lannis.github.io/" rel="alternate"></link><link href="http://lannis.github.io/feeds/all.atom.xml" rel="self"></link><id>http://lannis.github.io/</id><updated>2015-11-13T23:32:00+08:00</updated><entry><title>最后一颗子弹--GreenPlum中Resync机制</title><link href="http://lannis.github.io/articles/greeplum-code-analysis-03/" rel="alternate"></link><updated>2015-11-13T23:32:00+08:00</updated><author><name>Lannis</name></author><id>tag:lannis.github.io,2015-11-13:articles/greeplum-code-analysis-03/</id><summary type="html">&lt;p&gt;&lt;strong&gt;&lt;em&gt;上周&lt;/em&gt;&lt;/strong&gt;就一直想学习一下GreenPlum中的Resync机制，但是限于工作比较忙，好几次凌晨多看着代码看到睡着了，也断断续续的。&lt;br /&gt;
+双十一当天写了一个草稿，后来觉得太low了，自己都快看不明白了，也就算了，再者说双十一都去剁手了谁还弄这个呀哈哈。  &lt;/p&gt;
+&lt;p&gt;这里不得不吐槽一下GreenPlum的code comments，已经github开源了，好多写的乱的很，介绍的功能与实际的实现不太相符。&lt;br /&gt;
+因此一怒之下直接从一个变量开启了这次的学习之旅，可以说是一个函数isFullResync()，一趟艰难的旅行。  &lt;/p&gt;
+&lt;h5&gt;Why&lt;/h5&gt;
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;前一篇中&lt;/em&gt;&lt;/strong&gt;基本上粗略的介绍了一下GreenPlum的HA的架构(工作原理)，也就是它正常运行时是什么样的。但是本身HA就是在高可用性，在primary实例出现问题时，备胎mirror可以快速顶替，接手master下发的业务。现在考虑这样的问题，如果HA本身出问题了，其自身有是怎么修复的？  &lt;/p&gt;
+&lt;h5&gt;How (in PostgreSQL)&lt;/h5&gt;
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;在PostgreSQL中&lt;/em&gt;&lt;/strong&gt;，如果主机与备机发生断连(备机down掉)，特别是cluster下，主机需要继续work，在备机恢复后，其又是如何修复的呢？前面介绍了PostgreSQL中的replication通过的是WAL stream。备机从本地最后一个有效的WAL LSN发起请求，主机从此LSN开始往后发日志数据到备机。如果备机down掉了，备机上的日志是持久化的，当再次起来后再拿最后的LSN去向主机发起同步请求，即使主机上持续的在处理业务，只要保证备机请求的LSN点再主机上有就可以了，以为WAL是连续的，只要将此LSN之后的日志发送到备机上去做redo就可以完成主备的catchup。但是GreenPlum的主备同步机制是基于file data replication的。数据是离散的。它又是怎么做的呢？   &lt;/p&gt;
+&lt;h5&gt;How (in GreenPlum)&lt;/h5&gt;
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;在GreenPlum中&lt;/em&gt;&lt;/strong&gt;，当mirror实例down调后，master上的实例管理&lt;em&gt;ftsprobe&lt;/em&gt;进程会察觉到，然后通知master transition，进入到&lt;strong&gt;change tracking mode&lt;/strong&gt;。什么叫change tracking呢? 意思是mirror down掉，primary停止file data replication，将mirror missed的file data记录到change tracking log中(change tracking log分为几类，具体可以看一下code)。当mirror重新启动后，mirror和primary之间进入resync模式。目的是将mirror missed的数据同步过来。当主备同步完成后，系统状态将进入sync模式。  &lt;/p&gt;
+&lt;p&gt;从Resync模式来看，Resync分为两种：Full Resync以及Incremental Resync，两种的Resync机制是不同的。按照正常的思维如果需要做Resync特别是Full Resync需要进行所有的数据目录下的数据遍历以及同步，实际上在GreenPlum中使用了另外一种方法：将所有persistent的relation分类存到几个persistent系统表中，当然这些系统表的记录的信息不是pg_class那种，而是与同步mirror相关的一些字段。在Resync前，也就是Transition阶段，会将需要同步的信息更新到persistent系统表中。在Resync manage时，将这些信息同persistent系统表中提出来插入到哈希表中。  &lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;*Full Resync&lt;/em&gt;&lt;/strong&gt;*扫描persistent表中所有的relation，对于每一个普通的relation而言，并不是同步所有的数据页面，而是要满足下面的条件的：  &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;            for (blkno = entry-&amp;gt;mirrorBufpoolResyncCkptBlockNum; blkno &amp;lt; numBlocks; blkno++)   
+                {    
+                    XLogRecPtr  endResyncLSN = (isFullResync() ?   
+                                                FileRepResync_GetEndFullResyncLSN() :  
+                                                FileRepResync_GetEndIncrResyncLSN());
+
+                    if (XLByteLE(PageGetLSN(page), endResyncLSN) &amp;amp;&amp;amp;  
+                        XLByteLE(entry-&amp;gt;mirrorBufpoolResyncCkptLoc, PageGetLSN(page)))   
+                    {  
+                        smgrwrite(smgr_relation,   
+                                  blkno,  
+                                  (char *)BufferGetBlock(buf),  
+                                  FALSE);  
+                    }
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;略微想一下就明白了，其实GreenPlum想做一种增量式的全量，只同步上次ResyncCheckpoint之后的信息，实际看一下code发现还没有做完，仍然是同步整个relation，当然对于单个relation内部，增量也是类似的(增量有些特殊的relation需要做full sync处理)。    &lt;br /&gt;
+对于Append Only的relation而言，resync似乎就简单许多了，只需要同步mirror missed的数据就可以了。  &lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;Incremental Resync&lt;/em&gt;&lt;/strong&gt;相对于Full Resync而言，其并不做persistent系统表们的扫描，通过一个内部的SPI查询，获取到Change Tracking Log中记录的miss掉的relation，并且这部分miss调的relation，我们只同步endResyncLSN之后的页面。一个是之前的一个是之后的和FullCOPY要区分清楚。  &lt;/p&gt;
+&lt;p&gt;从进程角度来看，Resync主要有由两类进程ResyncManager和ResyncWorker来完成。目前来看ResyncManager有且只会有一个，ResyncWorker有四个。这个和它的注释不一样，注释上说默认是一个worker，最多可以启动8个，GUC可配置...&lt;br /&gt;
+&lt;strong&gt;&lt;em&gt;ResyncManager&lt;/em&gt;&lt;/strong&gt;负责识别出来哪些relation需要做resync，将这些信息存入到到shmem哈希表中，以及预处理resync到mirror的特殊操作(ReCreate以及ReDrop)。从调用关系来看清晰明了：  &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;    FileRepPrimary_StartResyncManager：    
+           FileRepResyncManager_InResyncTransition:  
+                  ChangeTracking_RecordLastChangeTrackedLoc  
+                  PersistentFileSysObj_MarkWholeMirrorFullCopy (full)  
+                  PersistentFileSysObj_MarkSpecialScanIncremental (inc)  
+                  PersistentFileSysObj_MarkPageIncrementalFromChangeLog (inc)  
+                  PersistentFileSysObj_MarkAppendOnlyCatchup (inc)  
+                  PersistentFileSysObj_MirrorReDrop  
+                  PersistentFileSysObj_MirrorReCreate  
+                  PersistentFileSysObj_MarkMirrorReDropped  
+                  PersistentFileSysObj_MarkMirrorReCreated  
+   FileRepPrimary_RunResyncManager:  
+          PersistentFileSysObj_ResynchronizeScan  
+          PersistentFileSysObj_ResynchronizeRefetch  
+          FileRepResync_InsertEntry
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;ResyncWorker&lt;/em&gt;&lt;/strong&gt;负责从shmem哈希表中获取需要同步到mirror的信息进行resync。  &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;    FileRepPrimary_RunResyncWorker:  
+           FileRepPrimary_GetResyncEntry  
+           FileRepPrimary_ResyncWrite  
+           FileRepPrimary_ResyncBufferPoolIncrementalWrite
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;经历这一系列复杂的过程后，Primary和mirror有重新恢复了sync状态。everything is ok。  &lt;/p&gt;
+&lt;h5&gt;What 点(tu)赞(cao)&lt;/h5&gt;
+&lt;p&gt;GreenPlum的HA是一套复杂比较高的机制，相对于PostgreSQL而言，有赞美的一面，也有烦恼的一面。先说好的吧，GreenPlum的主备同步完全走的是memory，相当快，并且没有用WAL，意味着备机不需要做恢复，在主机down掉后，failover可以瞬间完成。但是在正常的mirror file sync以及change tracking过程中，由于需要并发控制mirror lock给主机上的业务带来了很大的负担。    &lt;/p&gt;
+&lt;p&gt;PostgreSQL的HA基本上和业务是隔离的，业务进行中不需要关注主备同步，只有在commit的时候看一下其关注的WAL是否已经同步到备机了(sync模式下)，异步模式下完全没有影响，但是当主机down掉后，failover备机需要做redo来恢复，可能还会比较慢，并且采用WAL物理传输，效率多少有点不尽人意。当然萝卜白菜各有所爱，你有你的选择。  &lt;/p&gt;
+&lt;p&gt;后面有机会，有时间再学习一下Greenplum PostgreSQL等等其他各种niubility的技术。&lt;br /&gt;
+Good night Sweety, Good night World.  &lt;/p&gt;</summary><category term="GreenPlum"></category></entry><entry><title>GreenPlum中高可用实现与恢复简介</title><link href="http://lannis.github.io/articles/greeplum-code-analysis-02/" rel="alternate"></link><updated>2015-11-04T00:03:00+08:00</updated><author><name>Lannis</name></author><id>tag:lannis.github.io,2015-11-04:articles/greeplum-code-analysis-02/</id><summary type="html">&lt;p&gt;&lt;strong&gt;&lt;em&gt;在上一篇&lt;/em&gt;&lt;/strong&gt;文章中介绍了除了master外，primary和mirror的进程以及其主要的作用。本文主要从业务流程上将各个进程的处理功能串联一下。 &lt;/p&gt;
 &lt;h4&gt;GreenPlum中的文件&lt;/h4&gt;
 &lt;p&gt;&lt;strong&gt;&lt;em&gt;在PostgreSQL数据库&lt;/em&gt;&lt;/strong&gt;中主要存在两类文件：数据文件和非数据文件。这两个概念在GreenPlum中用BufferPoolFile和FlatFile来说明。相对于PostgreSQL，在GreenPlum增加了另外一种文件类别--append only，什么意思呢？查了一下相关的概念:  &lt;/p&gt;
 &lt;blockquote&gt;
